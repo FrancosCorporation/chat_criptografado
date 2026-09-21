@@ -1,5 +1,25 @@
 # Chat Criptografado
 
+## 🐳 Instalação e Execução (Docker) — recomendado
+
+### Pré-requisitos
+- [Docker](https://docs.docker.com/get-docker/) + Docker Compose
+
+### Rodar com Docker
+```bash
+docker compose up --build
+```
+```bash
+docker run --rm -v $(pwd):/src -w /src eclipse-temurin:17 sh -c 'javac -d out $(find src -name "*.java")'
+```
+
+### Sem Docker (local)
+```bash
+# Requer JDK
+javac -d out $(find src -name '*.java')
+java -cp out Chat1
+```
+
 Chat peer-to-peer em Java com mensagens cifradas em **DES** — **projeto de estudo** de programação em redes (2022).
 
 ![Java](https://img.shields.io/badge/Java-11-orange?logo=openjdk&logoColor=white)
