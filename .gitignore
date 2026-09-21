@@ -1,0 +1,16 @@
+# Build
+bin/
+*.class
+
+# Eclipse
+.metadata/
+.settings/
+
+# Chaves e artefatos gerados em runtime pelo chat
+Chave.key
+MensagemSecreta.des
+arq-recebido.txt
+arq-enviado.txt
+
+# Logs
+*.log
