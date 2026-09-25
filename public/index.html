@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Criptografado (DES/ECB)</title>
+  <meta name="description" content="Chat P2P criptografado com DES/ECB/PKCS5 — versão web do projeto Java/UDP de 2022.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Diálogo de boas-vindas (fiel ao JOptionPane inicial do Chat1.java) -->
+  <div id="tela-bemvindo" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-caixa">
+      <h1>🔒 Chat Criptografado</h1>
+      <p class="creditos">Baseado no projeto Java de 2022 — prof. Alexandre Paiva e Bruno Manso</p>
+      <ul class="features">
+        <li>Mensagens cifradas com <strong>DES/ECB/PKCS5Padding</strong> (no cliente — a chave nunca sai do seu navegador)</li>
+        <li>Relay WebSocket no lugar dos DatagramSockets UDP 7777↔8888</li>
+        <li>Chave de 8 bytes gerada em runtime (equivalente ao <code>Chave.key</code>)</li>
+        <li>Comandos: <code>/geo</code> <code>/mapa</code> <code>/arquivo</code> <code>/sair</code></li>
+      </ul>
+      <label for="inp-nome">Seu nome:</label>
+      <input id="inp-nome" type="text" maxlength="30" placeholder="Como você aparecerá no chat" autocomplete="off">
+      <button id="btn-entrar" class="btn">Entrar</button>
+    </div>
+  </div>
+
+  <!-- Diálogo de chave (G gera / C cola — fiel ao original) -->
+  <div id="tela-chave" class="modal" role="dialog" aria-modal="true" hidden>
+    <div class="modal-caixa">
+      <h2>Chave DES compartilhada</h2>
+      <p>Gere a chave em um dos lados e cole no outro — igual ao <code>Chave.key</code> copiado à mão em 2022.</p>
+      <div class="chave-linha">
+        <input id="inp-chave" type="text" maxlength="16" placeholder="16 hex (ex: 1a2b3c...)" autocomplete="off">
+        <button id="btn-gerar" class="btn">G</button>
+        <button id="btn-colar" class="btn">C</button>
+      </div>
+      <button id="btn-usar" class="btn btn-primario">Usar esta chave</button>
+    </div>
+  </div>
+
+  <!-- Sala de chat -->
+  <main id="sala" hidden>
+    <header class="topo">
+      <h1>🔒 Chat Criptografado</h1>
+      <span id="status" class="status">conectando...</span>
+    </header>
+
+    <section id="mensagens" class="mensagens" aria-live="polite"></section>
+
+    <details class="wire">
+      <summary>Wire — o que trafega no relay (ciphertext)</summary>
+      <pre id="wire-log"></pre>
+    </details>
+
+    <form id="form-msg" class="form-msg" autocomplete="off">
+      <input id="inp-msg" type="text" placeholder="Mensagem (ou /geo, /mapa, /arquivo, /sair)" aria-label="Sua mensagem">
+      <button type="submit" class="btn btn-primario">Enviar</button>
+    </form>
+  </main>
+
+  <script src="/crypto-js.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

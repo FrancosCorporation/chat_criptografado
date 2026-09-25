@@ -1,109 +1,90 @@
 # Chat Criptografado
 
-## 🐳 Instalação e Execução (Docker) — recomendado
-
-### Pré-requisitos
-- [Docker](https://docs.docker.com/get-docker/) + Docker Compose
-
-### Rodar com Docker
-```bash
-docker compose up --build
-```
-```bash
-docker run --rm -v $(pwd):/src -w /src eclipse-temurin:17 sh -c 'javac -d out $(find src -name "*.java")'
-```
-
-### Sem Docker (local)
-```bash
-# Requer JDK
-javac -d out $(find src -name '*.java')
-java -cp out Chat1
-```
-
-Chat peer-to-peer em Java com mensagens cifradas em **DES** — **projeto de estudo** de programação em redes (2022).
-
-![Java](https://img.shields.io/badge/Java-11-orange?logo=openjdk&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-ES2022-yellow?logo=javascript&logoColor=white)
+![Node](https://img.shields.io/badge/node-%3E%3D18-green?logo=node.js&logoColor=white)
+![WebSocket](https://img.shields.io/badge/transport-WebSocket-blue)
+![Cripto](https://img.shields.io/badge/cifra-DES%2FECB%2FPKCS5-red)
+![Tests](https://img.shields.io/badge/testes-7%2F7%20passando-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Status](https://img.shields.io/badge/status-conclu%C3%ADdo%20(estudo)-blue)
 
-## Sobre
+Chat **ponto a ponto com mensagens cifradas em DES/ECB/PKCS5Padding** — versão web (2026) do
+projeto Java/UDP de 2022, com os 15 fontes originais preservados em [`java/`](java/).
 
-Trabalho de estudo desenvolvido em 2022 para praticar sockets e criptografia simétrica em Java.
-É um chat entre dois pontos (dois processos na mesma máquina ou em máquinas diferentes) que troca
-mensagens via **UDP** e cifra o conteúdo com o algoritmo **DES**. A chave de criptografia **é gerada
-em tempo de execução** pela própria aplicação (opção `G` do menu) e gravada localmente no arquivo
-`Chave.key` — esse arquivo **não é versionado** e não há chave fixa no repositório.
+> Projeto de estudo originado nas aulas dos professores **Alexandre Paiva** e **Bruno Manso** (2022).
 
-Os créditos no código citam os professores **Alexandre Paiva e Bruno Manso** (material de apoio da disciplina).
+## Como funciona
 
-## Funcionalidades
-
-- Chat ponto a ponto via **UDP** (`DatagramSocket`/`DatagramPacket`), com envio e recebimento em threads separadas.
-- **Criptografia DES/ECB/PKCS5Padding** (`javax.crypto`) de todas as mensagens, com decifragem na recepção.
-- **Geração de chave em runtime** (`KeyGenerator` + `SecureRandom`), salva em `Chave.key` para ser usada pelos dois lados.
-- Menu de opções com interface em `JOptionPane` (Swing):
-  - `G` — geolocalização do próprio IP consultando a API pública `ipapi.co`;
-  - `O` — geolocalização de outro IP, abrindo o **Google Maps** no navegador;
-  - `U` / `D` — transferência de arquivo entre os pontos via **TCP** (`ServerSocket`/`Socket`);
-  - `S` / `V` — sair ou voltar ao chat.
-- Seleção de IP de destino (local `127.0.0.1`, IP externo ou IP digitado manualmente).
-- Classes de exemplo didáticas: `GeradorChave`, `Criptografador`, `Descriptografador` e variantes para arquivo,
-  além de um cliente/servidor TCP mínimo (`clienteseguro` / `servidorseguro`).
-
-## Stack
-
-- **Java 11** (projeto Eclipse `JavaSE-11`).
-- **Java Swing / AWT** para os diálogos (`JOptionPane`, `Desktop`).
-- **java.net**: `DatagramSocket`, `DatagramPacket`, `ServerSocket`, `Socket`, `URL`/`URLConnection`.
-- **javax.crypto / java.security**: DES, `Cipher`, `KeyGenerator`, `SecureRandom`.
-- API externa: [ipapi.co](https://ipapi.co) (geolocalização por IP).
-
-## Como rodar
-
-Requer JDK 11+ instalado. Não há build automatizado (Maven/Gradle) — o projeto é Eclipse puro.
-
-Via linha de comando, a partir da raiz do repositório:
-
-```bash
-javac -d bin src/Exemplos/*.java
-java -cp bin Exemplos.chat1.Chat1
+```
+[Cliente A]                          [Cliente B]
+    |  cifra DES/ECB (chave local)       |
+    |  "Rodolfo : oi" ──► hex cifrado    |
+    └────────────► relay ws ◄────────────┘
+                    │  repassa o CIPHERTEXT sem decifrar (servidor burro)
+                    ▼
+             B decifra com a MESMA chave e exibe "Rodolfo : oi"
 ```
 
-Pontos de entrada (`main`) disponíveis:
+- **Criptografia no cliente**: a chave DES (8 bytes, gerada em runtime — equivalente ao
+  `Chave.key` do original, que era copiado à mão entre as pontas) **nunca sai do navegador**.
+  O relay só enxerga ciphertext hex.
+- **Transporte**: os `DatagramSocket` UDP (7777↔8888) de 2022 viraram um relay **WebSocket** (`ws`).
+- **Fiel ao original**: mensagens no formato `nome : texto`, eco do ciphertext trafegado
+  (painel "wire"), comando `/menu` com `/geo` (ipapi.co), `/mapa` (Google Maps), `/arquivo`
+  (transferência cifrada) e `/sair`.
 
-- `Exemplos.chat1.Chat1` — versão com interface gráfica (menus e diálogos).
-- `Exemplos.PeerChat1.Chat1` — versão de console (menu "1 - Gerar chave / 2 - Entrar no programa").
+## Instalação e execução
 
-> A segunda versão do chat (`chat2` / `PeerChat2`, em `src/Exemplos/PeerChat2.java`) está **em desenvolvimento**:
-> o bloco principal está comentado no código. Ela **não** tem `main` executável no estado atual.
+Requer [Node.js 18+](https://nodejs.org/).
 
-Passos para conversar:
+```bash
+npm install   # instala ws + crypto-js
+npm start     # servidor em http://localhost:3000
+npm test      # 7 testes: roundtrip DES, chave errada, 2 clientes trocando mensagem cifrada
+```
 
-1. Execute a aplicação nas duas máquinas (ou em dois terminais).
-2. Em um dos lados, gere a chave (opção `G` no menu) e copie o arquivo `Chave.key` gerado para o outro lado,
-   ou gere a chave em ambos os lados antes de conectar.
-3. Informe porta de saída, porta de destino e o IP do outro ponto, e comece a digitar.
+Como usar (2 pessoas / 2 abas):
 
-> Observação: `Chave.key` é criada em tempo de execução e está no `.gitignore`; o arquivo citado no
-> código-fonte é gerado automaticamente, não sendo necessário versioná-lo.
+1. Abra **http://localhost:3000** em duas abas ou navegadores.
+2. Em **uma** das pontas: digite seu nome → botão **G** gera a chave (copiada automaticamente).
+3. Envie a chave ao outro participativo pelo canal que preferir e cole lá com **C**.
+4. Conversem — o painel **wire** mostra que só trafega ciphertext.
+5. Comandos: `/geo`, `/mapa`, `/arquivo`, `/sair`.
 
-## Estrutura do projeto
+> Em rede real: rode o servidor em uma máquina (`PORT=3000 node server.js`) e as outras
+> pontas acessam `http://<ip-da-maquina>:3000`.
+
+## O que mudou em relação ao Java de 2022 (e o que ficou igual)
+
+| Original (Java 11) | Versão web (Node 18+) |
+|---|---|
+| UDP `DatagramSocket` 7777↔8888, payload cifrado | relay WebSocket (`ws`), payload cifrado igual |
+| `javax.crypto` DES/ECB/PKCS5Padding, `Chave.key` serializado | `crypto-js` DES/ECB/Pkcs7 (≡PKCS5), chave hex 16 chars |
+| Troca de mensagens no console (Scanner) | sala de chat no navegador com histórico |
+| `/menu` com JOptionPane (geo-IP, Maps, arquivo TCP) | `/geo`, `/mapa`, `/arquivo` (cifrado), `/sair` |
+| Transferência de arquivo em **texto plano** (TCP) | transferência de arquivo **cifrada** (o bloco comentado do original, enfim ativo) |
+
+## Estrutura
 
 ```
 chat_criptografado/
-├── src/Exemplos/
-│   ├── Chat1.java                  # chat UDP com interface gráfica (main em chat1.Chat1)
-│   ├── PeerChat1.java              # chat UDP de console (main em PeerChat1.Chat1)
-│   ├── PeerChat2.java              # 2ª versão do chat (em desenvolvimento, main comentado)
-│   ├── ComunicadorSeguro.java      # cliente/servidor TCP reutilizável
-│   ├── GeradorChave.java           # gera a chave DES em runtime
-│   ├── Criptografador*.java        # exemplos de cifragem (texto e arquivo)
-│   ├── Descriptografador*.java     # exemplos de decifragem
-│   ├── clienteseguro.java          # cliente TCP de exemplo
-│   ├── servidorseguro.java         # servidor TCP de exemplo
-│   └── ...                         # demais exemplos de aula
-├── .classpath / .project           # configuração Eclipse
-└── README.md
+├── server.js               # relay ws + estático (Node puro)
+├── js/des.js               # wrapper DES/ECB/PKCS5 (browser + Node)
+├── public/
+│   ├── index.html          # boas-vindas -> nome -> chave -> sala
+│   ├── app.js              # fluxo do cliente (cifra/decifra/comandos)
+│   └── style.css
+├── test/chat-test.mjs      # 7 testes (npm test)
+└── java/                   # ✔ PROJETO ORIGINAL 2022 preservado
+    └── Exemplos/           # Chat1, PeerChat1/2, ComunicadorSeguro, didáticos...
+```
+
+### Rodar a versão Java original (histórica)
+
+```bash
+cd java
+javac -d bin Exemplos/*.java
+java -cp bin Exemplos.chat1'$'Chat1   # main aninhado do Chat1.java
+java -cp bin Exemplos.PeerChat1'$'Chat1
 ```
 
 ## Licença
