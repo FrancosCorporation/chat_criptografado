@@ -3,12 +3,12 @@
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES2022-yellow?logo=javascript&logoColor=white)
 ![Node](https://img.shields.io/badge/node-%3E%3D18-green?logo=node.js&logoColor=white)
 ![WebSocket](https://img.shields.io/badge/transport-WebSocket-blue)
-![Cripto](https://img.shields.io/badge/cifra-DES%2FECB%2FPKCS5-red)
+![Cripto](https://img.shields.io/badge/cifra-AES--256--GCM-blue)
 ![Tests](https://img.shields.io/badge/testes-7%2F7%20passando-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-Chat **ponto a ponto com mensagens cifradas em DES/ECB/PKCS5Padding** — versão web (2026) do
-projeto Java/UDP de 2022, com os 15 fontes originais preservados em [`java/`](java/).
+Chat ponto a ponto que usa **AES-256-GCM** no navegador e mantém DES/ECB/PKCS5 como modo legado
+para compatibilidade com o projeto Java/UDP de 2022, cujos 15 fontes originais estão em [`java/`](java/).
 
 > Projeto de estudo originado nas aulas dos professores **Alexandre Paiva** e **Bruno Manso** (2022).
 
@@ -16,7 +16,7 @@ projeto Java/UDP de 2022, com os 15 fontes originais preservados em [`java/`](ja
 
 ```
 [Cliente A]                          [Cliente B]
-    |  cifra DES/ECB (chave local)       |
+    |  cifra AES-GCM (chave local)       |
     |  "Rodolfo : oi" ──► hex cifrado    |
     └────────────► relay ws ◄────────────┘
                     │  repassa o CIPHERTEXT sem decifrar (servidor burro)
@@ -24,9 +24,9 @@ projeto Java/UDP de 2022, com os 15 fontes originais preservados em [`java/`](ja
              B decifra com a MESMA chave e exibe "Rodolfo : oi"
 ```
 
-- **Criptografia no cliente**: a chave DES (8 bytes, gerada em runtime — equivalente ao
-  `Chave.key` do original, que era copiado à mão entre as pontas) **nunca sai do navegador**.
-  O relay só enxerga ciphertext hex.
+- **Criptografia no cliente**: AES-256-GCM usa um IV aleatório por mensagem e autentica o conteúdo.
+  A chave **nunca sai do navegador**; o relay só enxerga ciphertext hex. Chaves antigas DES de 8 bytes
+  continuam aceitas para preservar o modo didático original.
 - **Transporte**: os `DatagramSocket` UDP (7777↔8888) de 2022 viraram um relay **WebSocket** (`ws`).
 - **Fiel ao original**: mensagens no formato `nome : texto`, eco do ciphertext trafegado
   (painel "wire"), comando `/menu` com `/geo` (ipapi.co), `/mapa` (Google Maps), `/arquivo`
@@ -45,7 +45,7 @@ npm test      # 7 testes: roundtrip DES, chave errada, 2 clientes trocando mensa
 Como usar (2 pessoas / 2 abas):
 
 1. Abra **http://localhost:3000** em duas abas ou navegadores.
-2. Em **uma** das pontas: digite seu nome → botão **G** gera a chave (copiada automaticamente).
+2. Em **uma** das pontas: digite seu nome → botão **G** gera uma chave AES (copiada automaticamente).
 3. Envie a chave ao outro participativo pelo canal que preferir e cole lá com **C**.
 4. Conversem — o painel **wire** mostra que só trafega ciphertext.
 5. Comandos: `/geo`, `/mapa`, `/arquivo`, `/sair`.
@@ -58,7 +58,7 @@ Como usar (2 pessoas / 2 abas):
 | Original (Java 11) | Versão web (Node 18+) |
 |---|---|
 | UDP `DatagramSocket` 7777↔8888, payload cifrado | relay WebSocket (`ws`), payload cifrado igual |
-| `javax.crypto` DES/ECB/PKCS5Padding, `Chave.key` serializado | `crypto-js` DES/ECB/Pkcs7 (≡PKCS5), chave hex 16 chars |
+| `javax.crypto` DES/ECB/PKCS5Padding, `Chave.key` serializado | AES-256-GCM padrão; DES legado disponível para chave hex de 16 chars |
 | Troca de mensagens no console (Scanner) | sala de chat no navegador com histórico |
 | `/menu` com JOptionPane (geo-IP, Maps, arquivo TCP) | `/geo`, `/mapa`, `/arquivo` (cifrado), `/sair` |
 | Transferência de arquivo em **texto plano** (TCP) | transferência de arquivo **cifrada** (o bloco comentado do original, enfim ativo) |
@@ -68,7 +68,7 @@ Como usar (2 pessoas / 2 abas):
 ```
 chat_criptografado/
 ├── server.js               # relay ws + estático (Node puro)
-├── js/des.js               # wrapper DES/ECB/PKCS5 (browser + Node)
+├── js/des.js               # AES-GCM e wrapper DES/ECB legado (browser + Node)
 ├── public/
 │   ├── index.html          # boas-vindas -> nome -> chave -> sala
 │   ├── app.js              # fluxo do cliente (cifra/decifra/comandos)

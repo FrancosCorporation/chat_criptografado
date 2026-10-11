@@ -633,8 +633,19 @@ node --check server.js && npm test
 
 ---
 
-*Fim do plano. Gerado por leitura direta do código em 2026-10-02. Nenhum item já estava corrigido*
-*— todos apontam para defeitos ainda presentes.*
+## Registro de execução — 2026-10-11
+
+- O cliente agora gera AES-256-GCM com IV aleatório por mensagem; o modo DES antigo permanece
+  disponível para preservar compatibilidade. O relay limita payload a 64 MiB, conexões a 100 no
+  total e 10 por IP, tentativas a 20 por minuto e fecha conexões ociosas após 5 minutos.
+- Também foram aplicadas validação do envelope JSON, validação de nome de arquivo e limite de
+  payload inválido antes de encerrar a conexão; a interface limita arquivos a 20 MiB em AES-GCM e
+  2 MiB em DES legado. O painel de tráfego mostra no máximo 200 caracteres por payload e mantém um
+  teto de 100 mil caracteres.
+- Itens continuam desmarcados até executar as verificações e criar o commit exigido pelo plano.
+  Nenhum teste ou servidor foi executado nesta sessão.
+
+*Plano criado em 2026-10-02 e atualizado após a implementação parcial de 2026-10-11.*
 
 ### DEVOPS-04 · `crypto-js` sem pin de versão exata · [P2]
 

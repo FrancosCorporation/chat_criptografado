@@ -1,7 +1,7 @@
 // Cliente do Chat Criptografado — fluxo fiel ao Chat1.java (2022):
 // boas-vindas -> nome -> chave (G gera / C cola, como copiar o Chave.key) -> conversa
 // com mensagens "nome : texto" cifradas em DES/ECB/PKCS5 no cliente.
-import { criarDES, gerarChaveHex } from '/des.js';
+import { criarCriptografia, gerarChaveAESHex } from '/des.js';
 
 const $ = (sel) => document.querySelector(sel);
 const telaBemvindo = $('#tela-bemvindo');
@@ -15,7 +15,7 @@ const inpMsg = $('#inp-msg');
 const statusEl = $('#status');
 
 let nome = '';
-let des = null;
+let cifra = null;
 let ws = null;
 
 // ---------- fluxo ----------
@@ -29,7 +29,7 @@ $('#btn-entrar').addEventListener('click', () => {
 inpNome.addEventListener('keydown', (e) => e.key === 'Enter' && $('#btn-entrar').click());
 
 $('#btn-gerar').addEventListener('click', () => {
-  inpChave.value = gerarChaveHex();
+  inpChave.value = gerarChaveAESHex();
   navigator.clipboard?.writeText(inpChave.value).then(() => {
     inpChave.placeholder = 'chave gerada e copiada!';
   }).catch(() => {});
@@ -43,7 +43,7 @@ $('#btn-colar').addEventListener('click', async () => {
 
 $('#btn-usar').addEventListener('click', async () => {
   try {
-    des = await criarDES(inpChave.value.trim().toLowerCase());
+    cifra = await criarCriptografia(inpChave.value.trim().toLowerCase());
   } catch (erro) {
     inpChave.value = '';
     inpChave.placeholder = erro.message;
@@ -63,13 +63,27 @@ function conectar() {
   ws.onclose = () => setStatus('desconectado', false);
   ws.onerror = () => setStatus('erro de conexão', false);
 
-  ws.onmessage = (evento) => {
-    const pacote = JSON.parse(evento.data);
+  ws.onmessage = async (evento) => {
+    let pacote;
+    try {
+      pacote = JSON.parse(evento.data);
+    } catch {
+      msgSistema('O relay enviou uma mensagem inválida.');
+      return;
+    }
     if (pacote.type === 'sys') { msgSistema(pacote.text); return; }
     // wire: registra o payload CIFRADO que trafegou (fiel ao eco "[B@..." do original)
-    wire(`${pacote.from} >> ${pacote.data}`);
-    const texto = des.decifrar(pacote.data);
-    if (!texto) { msgQuebrada(pacote.from); return; }
+    const prefixoCipher = pacote.data.slice(0, 200);
+    wire(`${pacote.from} >> ${prefixoCipher}${pacote.data.length > 200 ? '…' : ''}`);
+    const alg = pacote.alg || 'des-ecb';
+    if (!cifra || alg !== cifra.alg) { msgQuebrada(pacote.from); return; }
+    let texto;
+    try {
+      texto = await cifra.decifrar(pacote.data);
+    } catch {
+      msgQuebrada(pacote.from);
+      return;
+    }
     if (pacote.type === 'file') {
       receberArquivo(pacote.from, pacote.name, texto);
     } else {
@@ -84,18 +98,25 @@ function setStatus(texto, on) {
 }
 
 // ---------- envio ----------
-$('#form-msg').addEventListener('submit', (e) => {
+$('#form-msg').addEventListener('submit', async (e) => {
   e.preventDefault();
   const texto = inpMsg.value;
   if (!texto.trim() || !ws || ws.readyState !== 1) return;
-  inpMsg.value = '';
+  if (texto.startsWith('/')) {
+    inpMsg.value = '';
+    return comando(texto);
+  }
 
-  if (texto.startsWith('/')) return comando(texto);
-
-  const pacote = { type: 'msg', from: nome, data: des.cifrar(texto) };
-  wire(`${nome} << ${pacote.data}`);
-  ws.send(JSON.stringify(pacote));
-  msgEnviada(texto);
+  try {
+    const pacote = { type: 'msg', from: nome, alg: cifra.alg, data: await cifra.cifrar(texto) };
+    if (ws.readyState !== 1) throw new Error('Conexão interrompida.');
+    inpMsg.value = '';
+    wire(`${nome} << ${pacote.data}`);
+    ws.send(JSON.stringify(pacote));
+    msgEnviada(texto);
+  } catch {
+    msgSistema('Não foi possível cifrar ou enviar a mensagem. Tente novamente.');
+  }
 });
 
 // ---------- /menu simplificado (fiel às letras do original) ----------
@@ -125,14 +146,27 @@ function comando(texto) {
     input.onchange = () => {
       const file = input.files[0];
       if (!file) return;
+      const limite = cifra?.alg === 'aes-gcm' ? 20 * 1024 * 1024 : 2 * 1024 * 1024;
+      if (file.size > limite) {
+        msgSistema(`Arquivo acima do limite para ${cifra?.alg === 'aes-gcm' ? 'AES-GCM' : 'DES legado'}.`);
+        return;
+      }
       const reader = new FileReader();
-      reader.onload = () => {
+      reader.onload = async () => {
         // fiel ao bloco comentado do original: o arquivo É cifrado antes de trafegar
-        const base64 = btoa([...new Uint8Array(reader.result)].map((b) => String.fromCharCode(b)).join(''));
-        const pacote = { type: 'file', from: nome, name: file.name, data: des.cifrar(base64) };
-        wire(`${nome} << [arquivo ${file.name}] ${pacote.data.slice(0, 60)}...`);
-        ws.send(JSON.stringify(pacote));
-        msgEnviada(`📎 ${file.name} (enviado cifrado)`);
+        try {
+          const base64 = arrayBufferParaBase64(reader.result);
+          const pacote = {
+            type: 'file', from: nome, name: file.name, alg: cifra.alg,
+            data: await cifra.cifrar(base64)
+          };
+          if (!ws || ws.readyState !== 1) throw new Error('Conexão interrompida.');
+          wire(`${nome} << [arquivo ${file.name}] ${pacote.data.slice(0, 60)}...`);
+          ws.send(JSON.stringify(pacote));
+          msgEnviada(`📎 ${file.name} (enviado cifrado)`);
+        } catch {
+          msgSistema('Não foi possível cifrar ou enviar o arquivo. Tente novamente.');
+        }
       };
       reader.readAsArrayBuffer(file);
     };
@@ -143,6 +177,16 @@ function comando(texto) {
   } else {
     msgSistema(`Comando desconhecido: ${cmd}. Use /geo, /mapa, /arquivo, /sair.`);
   }
+}
+
+function arrayBufferParaBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const partes = [];
+  const tamanhoParte = 0x8000;
+  for (let inicio = 0; inicio < bytes.length; inicio += tamanhoParte) {
+    partes.push(String.fromCharCode(...bytes.subarray(inicio, inicio + tamanhoParte)));
+  }
+  return btoa(partes.join(''));
 }
 
 // ---------- render ----------
@@ -158,7 +202,11 @@ function msgRecebida(de, texto) { bubble('msg-recebida', `<span class="msg-nome"
 function msgEnviada(texto) { bubble('msg-enviada', `<span class="msg-nome">${esc(nome)}</span>${esc(texto)}`); }
 function msgSistema(texto) { bubble('msg-sistema', esc(texto)); }
 function msgQuebrada(de) { bubble('msg-recebida msg-quebrada', `⚠ ${esc(de)} enviou dados que não decifram com sua chave (chaves diferentes?).`); }
-function wire(texto) { wireLog.textContent += `${texto}\n`; wireLog.scrollTop = wireLog.scrollHeight; }
+function wire(texto) {
+  wireLog.textContent += `${texto}\n`;
+  if (wireLog.textContent.length > 100_000) wireLog.textContent = wireLog.textContent.slice(-80_000);
+  wireLog.scrollTop = wireLog.scrollHeight;
+}
 function esc(s) { const d = document.createElement('span'); d.textContent = s; return d.innerHTML; }
 
 function receberArquivo(de, nomeArquivo, base64) {

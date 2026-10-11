@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chat Criptografado (DES/ECB)</title>
-  <meta name="description" content="Chat P2P criptografado com DES/ECB/PKCS5 — versão web do projeto Java/UDP de 2022.">
+  <title>Chat Criptografado (AES-GCM)</title>
+  <meta name="description" content="Chat com AES-256-GCM no navegador e compatibilidade com DES legado.">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,9 +14,9 @@
       <h1>🔒 Chat Criptografado</h1>
       <p class="creditos">Baseado no projeto Java de 2022 — prof. Alexandre Paiva e Bruno Manso</p>
       <ul class="features">
-        <li>Mensagens cifradas com <strong>DES/ECB/PKCS5Padding</strong> (no cliente — a chave nunca sai do seu navegador)</li>
+        <li>Mensagens cifradas com <strong>AES-256-GCM</strong> por padrão (no cliente — a chave nunca sai do seu navegador)</li>
         <li>Relay WebSocket no lugar dos DatagramSockets UDP 7777↔8888</li>
-        <li>Chave de 8 bytes gerada em runtime (equivalente ao <code>Chave.key</code>)</li>
+        <li>DES/ECB legado continua disponível com uma chave de 16 caracteres hex</li>
         <li>Comandos: <code>/geo</code> <code>/mapa</code> <code>/arquivo</code> <code>/sair</code></li>
       </ul>
       <label for="inp-nome">Seu nome:</label>
@@ -28,10 +28,10 @@
   <!-- Diálogo de chave (G gera / C cola — fiel ao original) -->
   <div id="tela-chave" class="modal" role="dialog" aria-modal="true" hidden>
     <div class="modal-caixa">
-      <h2>Chave DES compartilhada</h2>
-      <p>Gere a chave em um dos lados e cole no outro — igual ao <code>Chave.key</code> copiado à mão em 2022.</p>
+      <h2>Chave compartilhada</h2>
+      <p>G gera uma chave AES de 32 bytes. Cole a mesma chave no outro lado. Chaves DES antigas de 8 bytes continuam aceitas.</p>
       <div class="chave-linha">
-        <input id="inp-chave" type="text" maxlength="16" placeholder="16 hex (ex: 1a2b3c...)" autocomplete="off">
+        <input id="inp-chave" type="text" maxlength="64" placeholder="64 hex (AES) ou 16 hex (DES legado)" autocomplete="off">
         <button id="btn-gerar" class="btn">G</button>
         <button id="btn-colar" class="btn">C</button>
       </div>
